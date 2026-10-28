@@ -28,6 +28,9 @@ jobs:
           if [ -x "$SDKMANAGER" ]; then yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true; fi
           echo "ANDROID_HOME=$ANDROID_HOME"
 
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
       - name: Unit tests
         run: ./gradlew :app:testDebugUnitTest --stacktrace --no-daemon
 
@@ -73,6 +76,9 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: gradle
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
 
       - name: Build release APK
         run: ./gradlew :app:assembleRelease --stacktrace --no-daemon
