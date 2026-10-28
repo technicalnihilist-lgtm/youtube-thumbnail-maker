@@ -21,20 +21,21 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install SDK packages
-        run: sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+      # The ubuntu-latest image ships the Android SDK; only accept the licences.
+      - name: Accept Android SDK licences
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ -x "$SDKMANAGER" ]; then yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true; fi
+          echo "ANDROID_HOME=$ANDROID_HOME"
 
       - name: Unit tests
-        run: ./gradlew :app:testDebugUnitTest --stacktrace
+        run: ./gradlew :app:testDebugUnitTest --stacktrace --no-daemon
 
       - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace
+        run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
 
       - name: Build release APK
-        run: ./gradlew :app:assembleRelease --stacktrace
+        run: ./gradlew :app:assembleRelease --stacktrace --no-daemon
 
       - name: Upload test report
         if: always()
@@ -73,14 +74,8 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install SDK packages
-        run: sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
-
       - name: Build release APK
-        run: ./gradlew :app:assembleRelease --stacktrace
+        run: ./gradlew :app:assembleRelease --stacktrace --no-daemon
 
       - name: Attach APK to GitHub release
         uses: softprops/action-gh-release@v2
