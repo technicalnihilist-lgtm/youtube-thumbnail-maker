@@ -61,6 +61,8 @@ import com.thumbnailstudio.app.model.ShapeLayer
 import com.thumbnailstudio.app.model.StickerLayer
 import com.thumbnailstudio.app.model.TextAlignH
 import com.thumbnailstudio.app.model.TextLayer
+import com.thumbnailstudio.app.ai.AiText
+import com.thumbnailstudio.app.ai.OnDeviceAi
 import com.thumbnailstudio.app.render.Cutout
 import com.thumbnailstudio.app.render.ImagePipeline
 import com.thumbnailstudio.app.tools.SmartTools
@@ -418,20 +420,103 @@ private fun StyleToggle(label: String, active: Boolean, onChange: (Boolean) -> U
 fun ImageProperties(
     layer: ImageLayer,
     onUpdate: (ImageLayer) -> Unit,
-    onReplace: () -> Unit
+    onReplace: () -> Unit,
+    onExtractedText: (String) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var tolerance by remember { mutableFloatStateOf(0.25f) }
     var showErase by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    var aiBusy by remember { mutableStateOf(false) }
+    var aiStatus by remember { mutableStateOf<String?>(null) }
 
     Column {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = onReplace, modifier = Modifier.weight(1f)) { Text("Replace photo") }
             OutlinedButton(onClick = { showErase = true }) { Text("Erase") }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
+        SectionLabel("On-device AI")
+        Text(
+            "Real machine learning running on this phone: no upload, no account, no API key.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                enabled = !aiBusy,
+                onClick = {
+                    aiBusy = true
+                    aiStatus = null
+                    scope.launch {
+                        val src = withContext(Dispatchers.IO) { ImagePipeline.decode(layer.path, 1200) }
+                        if (src == null) {
+                            aiStatus = "Could not read that photo."
+                        } else {
+                            try {
+                                val cut = OnDeviceAi.cutoutSubject(src)
+                                if (cut == null) {
+                                    aiStatus = "No clear subject found. Try a photo with a person or product in front of a background."
+                                } else {
+                                    val saved = withContext(Dispatchers.IO) {
+                                        OnDeviceAi.savePng(cut, File(context.filesDir, "images"), "ai_cut")
+                                    }
+                                    if (saved != null) {
+                                        onUpdate(layer.copy(path = saved))
+                                        aiStatus = "Subject cut out on device."
+                                    } else {
+                                        aiStatus = "Could not save the cutout."
+                                    }
+                                }
+                            } catch (t: Throwable) {
+                                aiStatus = "AI model unavailable: " + (t.message ?: "not installed on this device")
+                            }
+                        }
+                        aiBusy = false
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) { Text(if (aiBusy) "Working…" else "AI cutout") }
+
+            OutlinedButton(
+                enabled = !aiBusy,
+                onClick = {
+                    aiBusy = true
+                    aiStatus = null
+                    scope.launch {
+                        val src = withContext(Dispatchers.IO) { ImagePipeline.decode(layer.path, 1600) }
+                        if (src == null) {
+                            aiStatus = "Could not read that photo."
+                        } else {
+                            try {
+                                val raw = OnDeviceAi.readText(src)
+                                val headline = AiText.headlineFromOcr(raw)
+                                if (headline.isBlank()) {
+                                    aiStatus = "No readable text found in this photo."
+                                } else {
+                                    onExtractedText(headline)
+                                    aiStatus = "Text read on device and added as a new layer."
+                                }
+                            } catch (t: Throwable) {
+                                aiStatus = "Text recognition failed: " + (t.message ?: "unknown error")
+                            }
+                        }
+                        aiBusy = false
+                    }
+                }
+            ) { Text("AI text") }
+        }
+        aiStatus?.let {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                it,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        Spacer(Modifier.height(12.dp))
         SectionLabel("Remove background colour (traditional cutout)")
         Text(
             "Flood-fills similar pixels from the edges, like a magic wand. This is not AI segmentation.",

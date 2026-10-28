@@ -218,8 +218,9 @@ fun SettingsScreen(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         "An offline YouTube thumbnail editor. All rendering happens on your device with Android graphics APIs. " +
-                            "Design assistance (contrast checks, palettes, layout suggestions) is rule-based — " +
-                            "no generative AI models are bundled or downloaded.",
+                            "Design checks (contrast, palettes, layouts) are rule-based. Two real on-device ML models are included: " +
+                            "subject segmentation for AI photo cutouts and Latin text recognition for reading text out of a photo. " +
+                            "Both run on the phone — no image, pixel or text is ever uploaded, and there is no API key or account.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

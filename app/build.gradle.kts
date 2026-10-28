@@ -12,8 +12,8 @@ android {
         applicationId = "com.thumbnailstudio.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
         vectorDrawables { useSupportLibrary = true }
         resourceConfigurations += listOf("en")
     }
@@ -77,6 +77,11 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core")
 
     implementation("androidx.exifinterface:exifinterface:1.3.7")
+
+    // On-device machine learning: subject segmentation and text recognition, both
+    // delivered by Google Play services so the APK stays small. No cloud, no API key.
+    implementation("com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1")
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
 
     testImplementation("junit:junit:4.13.2")

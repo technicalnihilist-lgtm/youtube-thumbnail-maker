@@ -2,6 +2,28 @@
 
 All notable changes to Thumbnail Studio. Versions follow Semantic Versioning.
 
+## [1.1.0] — 2026-10-28
+
+### Added — real on-device AI
+- **AI cutout**: subject segmentation (ML Kit, on-device) lifts the main subject out of a
+  photo with a transparent background. Replaces manual masking for the common case; the
+  flood-fill and erase-brush tools remain for edge cases.
+- **AI text**: on-device Latin text recognition reads text already present in a photo and
+  drops it into the design as a new, fully editable text layer.
+- `AiText` post-processing: picks the most likely headline lines out of raw OCR output,
+  strips noise and respects a character budget (unit tested).
+- Settings → About now states exactly which models run on the device and that nothing is
+  uploaded.
+
+### Changed
+- Version 1.1.0 (versionCode 2), APK 7.0 MB (1.0.0 was 5.9 MB). Both ML models are delivered
+  by Google Play services rather than bundled, which keeps the APK small; the first use of an
+  AI feature may let Play services fetch the model once, after which inference is fully offline.
+- Editor → Photo panel shows an "On-device AI" section with progress and error states, and
+  degrades gracefully when a device has no Play services (the flood-fill cutout and erase brush
+  keep working).
+- ML Kit adds `ACCESS_NETWORK_STATE`, used only to decide whether a model is available locally.
+
 ## [1.0.0] — 2026-10-28
 
 First public release.

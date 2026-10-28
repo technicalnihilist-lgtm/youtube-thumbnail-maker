@@ -308,7 +308,8 @@ fun EditorScreen(
                                         replacePicker.launch(
                                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                         )
-                                    }
+                                    },
+                                    onExtractedText = { text -> controller.addText(text) }
                                 )
                             }
                         }

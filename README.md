@@ -5,11 +5,29 @@ A lightweight, offline-first YouTube thumbnail maker for Android. Every pixel is
 - **Canvas:** fixed 1280 × 720 (16:9) document, exported at exactly that size.
 - **Editor:** text, photos, shapes, stickers, gradient/solid/photo backdrops, layers, undo/redo, snapping, safe-area guides.
 - **Export:** PNG or JPEG straight to `Pictures/Thumbnail Studio`, plus Android sharesheet.
-- **Size:** ~5.9 MB release APK, minSdk 24, targetSdk 34.
+- **On-device AI:** subject cutout and photo text recognition, both local.
+- **Size:** 7.0 MB release APK in 1.1.0 (5.9 MB in 1.0.0), minSdk 24, targetSdk 34.
 
-## What it is (and what it is not)
+## On-device AI (1.1.0)
 
-Thumbnail Studio deliberately contains **no generative AI**. The "Smart" tab is a set of deterministic design rules:
+Two real machine-learning models run on the phone. Nothing is uploaded, there is no API key,
+no account and no cloud inference:
+
+| Feature | Model | Where it runs |
+| --- | --- | --- |
+| **AI cutout** — lift the subject out of a photo | ML Kit Subject Segmentation | On device; model delivered by Google Play services |
+| **AI text** — read text already in a photo into an editable layer | ML Kit Text Recognition (Latin) | On device; model delivered by Google Play services |
+
+Both models are delivered by Google Play services instead of being bundled, which keeps the APK
+at ~7 MB; the first use of an AI feature may let Play services fetch the model once, and after
+that inference is fully offline. Both features degrade gracefully: if Play services is missing,
+the AI cutout explains itself and the flood-fill cutout plus the manual erase brush still work. `AiText` cleans the raw OCR output
+(picks the likely headline, drops noise, respects a 90-character budget) and is unit tested.
+
+## What is rule-based (and what is not AI)
+
+The "Smart" tab is deliberately **not** generative AI — it is deterministic design maths, and the
+app labels it that way:
 
 | Tool | How it actually works |
 | --- | --- |
@@ -18,7 +36,7 @@ Thumbnail Studio deliberately contains **no generative AI**. The "Smart" tab is 
 | Palette generator | Colour-harmony rotation (complementary / analogous / triadic / mono) |
 | Palette from design | Bucketed colour quantisation of the backdrop |
 | Smart layouts | Four rule-based composition templates |
-| Background cutout | Edge flood-fill ("magic wand") chroma removal |
+| Background cutout (manual) | Edge flood-fill ("magic wand") chroma removal — the AI cutout above is the ML path |
 | Erase brush | Manual per-pixel masking |
 | Adjustments | `ColorMatrix` grading + 3×3 unsharp kernel |
 
@@ -30,7 +48,7 @@ If a tool is not AI, the app does not call it AI.
 Multiple text layers, 8 bundled typefaces plus custom `.ttf`/`.otf` import, bold/italic/underline/uppercase, letter and line spacing, three alignments, rotation, curved (arc) text, gradient fill, outline, drop shadow, glow, extruded 3D depth, background highlight boxes, and automatic shrink-to-fit so text never overflows its box. Eight style presets (gaming, music, tech, education, vlog, news, cinematic, 3D pop).
 
 **Images**
-Gallery import (Photo Picker, no permissions), replace, corner radius, border, horizontal flip, brightness / contrast / saturation / hue / sharpness, colour-background cutout, manual erase brush, EXIF-correct decoding, memory-bounded bitmap cache.
+Gallery import (Photo Picker, no permissions), replace, corner radius, border, horizontal flip, brightness / contrast / saturation / hue / sharpness, **on-device AI subject cutout**, colour-background cutout, manual erase brush, **on-device AI text extraction**, EXIF-correct decoding, memory-bounded bitmap cache.
 
 **Shapes & stickers**
 Rectangle, rounded rectangle, ellipse, triangle, star, burst, arrow, line, frame, badge, speech bubble, heart — solid or gradient fill, border, rotation. 24 emoji stickers that scale and rotate.
@@ -87,6 +105,10 @@ app/src/main/java/com/thumbnailstudio/app/
 └── ui/         Compose screens: home, templates, projects, editor, settings
 ```
 
+**AI layer.** `ai/OnDeviceAi.kt` wraps the two ML Kit tasks in coroutines with cancellation and
+error handling; `ai/AiText.kt` is pure Kotlin post-processing with no Android types, so it is
+unit-tested like the rest of the logic.
+
 **Why this shape.** The document is immutable data; the editor mutates it through a controller that owns undo/redo snapshots. One renderer draws the interactive canvas, the small feed preview and the exported file, so preview and export can never drift apart. Layers live in a fixed 1280 × 720 coordinate space and are drawn through a single canvas scale, which keeps hit-testing, handles and export maths identical.
 
 **Storage.** Projects are individual JSON documents (kotlinx.serialization) written atomically to app storage. This avoids Room/KSP codegen — a measurable build-time and APK-size saving — while still being crash-safe. Images are copied into app storage on import; nothing is ever referenced from another app's sandbox.
@@ -95,7 +117,7 @@ app/src/main/java/com/thumbnailstudio/app/
 
 ## Tests
 
-`app/src/test/...` covers the parts that are pure logic and therefore worth pinning:
+`app/src/test/...` covers the parts that are pure logic and therefore worth pinning (29 cases):
 
 - project add/replace/duplicate/reorder/visibility
 - layer translate, uniform scale (with text-size coupling), rotation normalisation
@@ -109,7 +131,7 @@ app/src/main/java/com/thumbnailstudio/app/
 
 ```
 > Task :app:testDebugUnitTest
-23 tests completed
+29 tests completed
 ```
 
 ## Release signing
@@ -128,7 +150,9 @@ Settings → Updates performs an optional GitHub Releases check (needs internet)
 
 ## Privacy
 
-No analytics, no ads, no accounts, no telemetry, no third-party SDKs beyond AndroidX/Compose. `INTERNET` is declared only for the optional update check. Photos and projects never leave the device.
+No analytics, no ads, no accounts, no telemetry, no third-party SDKs beyond AndroidX/Compose and
+the two on-device ML Kit tasks. `INTERNET` is declared only for the optional update check. Photos,
+text and projects never leave the device — the AI runs locally.
 
 ## Licence
 
